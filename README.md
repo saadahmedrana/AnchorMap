@@ -78,7 +78,7 @@ After installation and configuration, you have **two options**:
 
 ---
 
-## Option 1 — Run the Pipeline (Terminal / Batch Mode)
+## Option 1 — Run the Pipeline (Terminal)
 
 ```bash
 python run_pipeline.py
@@ -92,10 +92,6 @@ This executes the full AnchorMap pipeline:
 - Confidence-based routing  
 - Variable renaming in Turtle (.ttl) files  
 
-Use this option for:
-- Batch processing
-- Reproducible experiments
-- Evaluation workflows
 
 ---
 
@@ -154,14 +150,14 @@ Rewrites accepted variable labels in the OEM Turtle (.ttl) file while preserving
 
 - `JSONSCHEMAFORSHIP.jsonld` — Canonical JSON-LD schema (Single Source of Truth)
 - `embed_SCHEMA.py` — Schema indexing and embedding generation
-- `iterative_masteragent.py` — Core multi-agent pipeline logic
+- `iterative_masteragent.py` — used for sweep of human review threshold parameter
 - `masteragent_ecms.py` — Pipeline orchestration
 - `variable_renamer_agent.py` — Rewrites accepted labels in TTL files
 - `eval_results_ecms.py` — Evaluation scripts
 - `human_review_cli.py` — Command-line human review interface
 - `clean_csv.py` — Preprocessing helper
 - `skip_variables.csv` — Variables excluded from evaluation
-- `CorrectNamesMappings.xlsx` — Mapping reference file
+- `CorrectNamesMappings.xlsx` — Mapping reference file for evaluating accuracy of pipeline
 
 ---
 

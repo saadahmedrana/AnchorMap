@@ -399,6 +399,7 @@ if not (st.session_state.get("run_started") and isinstance(df_clean, pd.DataFram
     st.info("Run Step 3 first.")
 else:
     finalize = st.button("Finalize + Run Renamer", width="stretch")
+
     if finalize:
         run_dir: Path = st.session_state["run_dir"]
         out_dir: Path = st.session_state["out_dir"]
@@ -407,8 +408,13 @@ else:
         final_mappings_csv: Path = st.session_state["final_mappings_csv"]
         human_decisions_csv: Path = st.session_state["human_decisions_csv"]
 
-        final_df = build_final_mappings(df_clean, st.session_state.get("hr_decisions", {}))
+        # Build final mappings
+        final_df = build_final_mappings(
+            df_clean,
+            st.session_state.get("hr_decisions", {})
+        )
 
+        # Save human decisions
         hr_rows = []
         for _, d in st.session_state.get("hr_decisions", {}).items():
             hr_rows.append({
@@ -419,13 +425,19 @@ else:
                 "final_match": d.get("final_match", ""),
                 "confidence": d.get("confidence", ""),
             })
-        pd.DataFrame(hr_rows).to_csv(human_decisions_csv, index=False, encoding="utf-8")
 
-        final_df.to_csv(final_mappings_csv, index=False, encoding="utf-8")
+        pd.DataFrame(hr_rows).to_csv(
+            human_decisions_csv, index=False, encoding="utf-8"
+        )
+
+        final_df.to_csv(
+            final_mappings_csv, index=False, encoding="utf-8"
+        )
 
         st.success(f"✅ Saved final mappings: {final_mappings_csv.name}")
         st.success(f"✅ Saved human decisions: {human_decisions_csv.name}")
 
+        # Run renamer
         with st.spinner("Running variable renamer..."):
             rc, out = run_cmd([
                 sys.executable, str(RENAMER),
@@ -442,7 +454,8 @@ else:
         else:
             st.success("✅ Renamer completed.")
             summarize(df_clean, st.session_state.get("hr_decisions", {}))
-                        # ---- Cache download payloads so downloads survive reruns ----
+
+            # ---- Cache download payloads (CRITICAL) ----
             payloads = {}
 
             # corrected TTLs
@@ -452,29 +465,33 @@ else:
 
             # mappings + cleaned results
             payloads[final_mappings_csv.name] = final_mappings_csv.read_bytes()
-            payloads[Path(st.session_state["clean_csv"]).name] = Path(st.session_state["clean_csv"]).read_bytes()
+            payloads[
+                Path(st.session_state["clean_csv"]).name
+            ] = Path(st.session_state["clean_csv"]).read_bytes()
 
             st.session_state["download_payloads"] = payloads
             st.session_state["downloads_ready"] = True
-            # -----------------------------
-# Downloads (stable across reruns)
+
+            st.success("📥 Downloads ready below.")
+
+
 # -----------------------------
-            st.header("📥 Downloads")
+# Downloads (ALWAYS OUTSIDE Step 5)
+# -----------------------------
+st.header("📥 Downloads")
 
-            if st.session_state.get("downloads_ready") and st.session_state.get("download_payloads"):
-                for fname, fbytes in st.session_state["download_payloads"].items():
-                    mime = "text/turtle" if fname.endswith(".ttl") else "text/csv"
-                    st.download_button(
-                        label=f"Download {fname}",
-                        data=fbytes,
-                        file_name=fname,
-                        mime=mime,
-                        key=f"dl_{st.session_state.get('run_id','')}_{fname}",
-                    )
-            else:
-                st.info("Run Step 5 to generate outputs, then download them here.")
-           
-
+if st.session_state.get("downloads_ready") and st.session_state.get("download_payloads"):
+    for fname, fbytes in st.session_state["download_payloads"].items():
+        mime = "text/turtle" if fname.endswith(".ttl") else "text/csv"
+        st.download_button(
+            label=f"Download {fname}",
+            data=fbytes,
+            file_name=fname,
+            mime=mime,
+            key=f"dl_{st.session_state.get('run_id','')}_{fname}",
+        )
+else:
+    st.info("Run Step 5 to generate outputs, then download them here.")
 
 # -----------------------------
 # Logs

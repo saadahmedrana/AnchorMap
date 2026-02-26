@@ -21,6 +21,7 @@ EMB_VECS = ROOT / "JSONSCHEMAFORSHIP_vectors.npy"
 EMB_IDS  = ROOT / "JSONSCHEMAFORSHIP_ids.json"
 EMB_TXTS = ROOT / "JSONSCHEMAFORSHIP_texts.json"
 
+
 # -----------------------------
 # Helpers
 # -----------------------------
@@ -42,6 +43,9 @@ def ensure_session_defaults():
     st.session_state.setdefault("run_dir", None)
     st.session_state.setdefault("out_dir", None)
     st.session_state.setdefault("selected_ttl", None)
+    st.session_state.setdefault("downloads_ready", False)
+    st.session_state.setdefault("download_payloads", {})  # name -> byte
+
 
     st.session_state.setdefault("results_csv", None)
     st.session_state.setdefault("audit_csv", None)
@@ -56,6 +60,9 @@ def ensure_session_defaults():
     st.session_state.setdefault("hr_index", 0)
     st.session_state.setdefault("hr_decisions", {})  # key -> dict(decision, final_match, best_match, confidence)
 
+    # IMPORTANT: flag to clear edit_box safely BEFORE widget creation
+    st.session_state.setdefault("_clear_edit_box", False)
+
 
 def append_log(txt: str):
     st.session_state["logs"] = (st.session_state.get("logs", "") + "\n" + txt).strip()
@@ -65,11 +72,6 @@ def clean_skipped(df: pd.DataFrame) -> pd.DataFrame:
     if "status" not in df.columns:
         return df.copy()
     return df[df["status"] != "SKIPPED_NOT_IN_STANDARD"].copy()
-
-
-def key_for_row(row) -> str:
-    # Unique key for human decision rows
-    return f"{str(row.get('file','')).strip()}|||{str(row.get('original_name','')).strip()}"
 
 
 def build_final_mappings(df_clean: pd.DataFrame, hr_decisions: dict) -> pd.DataFrame:
@@ -94,7 +96,6 @@ def build_final_mappings(df_clean: pd.DataFrame, hr_decisions: dict) -> pd.DataF
     })
 
     # Apply human decisions
-    # hr_decisions values: {decision, final_match, best_match, confidence, file, original_name}
     human_rows = []
     for _, d in hr_decisions.items():
         decision = str(d.get("decision", "")).upper().strip()
@@ -118,20 +119,14 @@ def build_final_mappings(df_clean: pd.DataFrame, hr_decisions: dict) -> pd.DataF
     human_df = pd.DataFrame(human_rows)
 
     if not human_df.empty:
-        # Override auto with human on same (source_file, original_name)
         key_cols = ["source_file", "original_name"]
         final = final.set_index(key_cols)
         human_df = human_df.set_index(key_cols)
 
-        # overwrite / add
         final.update(human_df)
-        # add new rows that don't exist
         final = pd.concat([final, human_df[~human_df.index.isin(final.index)]], axis=0)
-
         final = final.reset_index()
 
-    # Keep only what renamer needs
-    # (renamer can ignore extra cols, but we'll keep origin for debugging)
     final = final.sort_values(["source_file", "original_name"]).reset_index(drop=True)
     return final
 
@@ -139,14 +134,13 @@ def build_final_mappings(df_clean: pd.DataFrame, hr_decisions: dict) -> pd.DataF
 def summarize(df_clean: pd.DataFrame, hr_decisions: dict):
     counts = df_clean["status"].value_counts(dropna=False).to_dict() if "status" in df_clean.columns else {}
 
-    # human stats
     human_accept = human_reject = human_edit = 0
     for d in hr_decisions.values():
         dec = str(d.get("decision", "")).upper().strip()
         if dec == "ACCEPT":
             human_accept += 1
-            bm = str(d.get("best_match","")).strip()
-            fm = str(d.get("final_match","")).strip()
+            bm = str(d.get("best_match", "")).strip()
+            fm = str(d.get("final_match", "")).strip()
             if bm and fm and bm != fm:
                 human_edit += 1
         elif dec == "REJECT":
@@ -190,14 +184,15 @@ if embed_option.startswith("Use existing"):
     else:
         st.warning("⚠️ Embeddings not found in root. Please rebuild embeddings.")
 else:
-    if st.button("Run Schema Indexing Agent"):
+    if st.button("Run Schema Indexing Agent", width="stretch"):
         with st.spinner("Rebuilding embeddings..."):
             rc, out = run_cmd([sys.executable, str(EMBEDDER)], cwd=ROOT)
             append_log(out)
         if rc == 0 and EMB_VECS.exists() and EMB_IDS.exists() and EMB_TXTS.exists():
             st.success("✅ Embeddings rebuilt successfully!")
         else:
-            st.header("3️⃣ Retrieval and Reasoning Agent + Confidence Routing Agent (Mapping)")
+            st.error("❌ Embedding rebuild failed. Check logs below.")
+
 
 # -----------------------------
 # Step 2: TTL selection
@@ -213,12 +208,13 @@ ttl_names = [f.name for f in ttl_files]
 selected_ttl_name = st.selectbox("Choose a TTL file", ttl_names)
 selected_ttl = INPUT_DIR / selected_ttl_name
 
+
 # -----------------------------
 # Step 3: Run pipeline up to masteragent + clean
 # -----------------------------
 st.header("3️⃣ Retrieval and Reasoning Agent + Confidence Routing Agent ")
 
-run_clicked = st.button("Run Retrieval and Reasoning Agent")
+run_clicked = st.button("Run Retrieval and Reasoning Agent", width="stretch")
 if run_clicked:
     run_id = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     run_dir = RUNS_DIR / f"run_{run_id}"
@@ -246,6 +242,7 @@ if run_clicked:
     st.session_state["df_clean"] = None
     st.session_state["hr_index"] = 0
     st.session_state["hr_decisions"] = {}
+    st.session_state["_clear_edit_box"] = True  # clear when HR first opens
 
     with st.spinner("Retrieval and Reasoning Agent running..."):
         rc, out = run_cmd([
@@ -265,14 +262,15 @@ if run_clicked:
         st.session_state["df_clean"] = df_clean
         st.success("✅ Retrieval and Reasoning Agent completed and results saved.")
 
-# If we already have results in state, show them
+
 df_clean = st.session_state.get("df_clean")
 if st.session_state.get("run_started") and isinstance(df_clean, pd.DataFrame):
     st.subheader("📊 Routing Summary")
     st.write(df_clean["status"].value_counts())
 
     st.subheader("📄 Results Preview ")
-    st.dataframe(df_clean, use_container_width=True)
+    st.dataframe(df_clean, width="stretch")
+
 
 # -----------------------------
 # Step 4: Human review (GUI)
@@ -280,16 +278,13 @@ if st.session_state.get("run_started") and isinstance(df_clean, pd.DataFrame):
 st.header("4️⃣ Human Review")
 
 if not (st.session_state.get("run_started") and isinstance(df_clean, pd.DataFrame)):
-    st.info("Run the Retrieval and ReasoningAgent first.")
+    st.info("Run the Retrieval and Reasoning Agent first.")
 else:
-    hr = df_clean[df_clean["status"].astype(str).str.strip().eq("HUMAN_REVIEW")].copy()
-    hr = hr.reset_index(drop=True)
+    hr = df_clean[df_clean["status"].astype(str).str.strip().eq("HUMAN_REVIEW")].copy().reset_index(drop=True)
 
-    # If no HR needed
     if hr.empty:
         st.success("✅ No HUMAN_REVIEW items. You can finalize and run the Variable Renaming Agent.")
     else:
-        # Ensure index is valid
         idx = int(st.session_state.get("hr_index", 0))
         idx = max(0, min(idx, len(hr) - 1))
         st.session_state["hr_index"] = idx
@@ -300,13 +295,11 @@ else:
 
         proposed_raw = row.get("best_match", "")
         proposed = "" if pd.isna(proposed_raw) else str(proposed_raw).strip()
-
         conf = row.get("confidence", "")
 
         k = f"{file_name}|||{original}"
         existing = st.session_state["hr_decisions"].get(k, {})
 
-        # If all items decided, show completion
         if len(st.session_state["hr_decisions"]) >= len(hr):
             st.success("✅ All HUMAN_REVIEW items have decisions recorded.")
             st.info("Go to Step 5 to finalize mappings and run the Variable Renaming Agent.")
@@ -318,21 +311,21 @@ else:
             st.markdown(f"**Confidence:** `{conf}`")
             st.markdown("---")
 
-            # Navigation
-            nav1, nav2, nav3 = st.columns([1, 1, 3])
+            nav1, nav2, _ = st.columns([1, 1, 3])
             with nav1:
-                if st.button("⬅️ Prev"):
+                if st.button("⬅️ Prev", width="stretch"):
                     st.session_state["hr_index"] = max(0, idx - 1)
+                    st.session_state["_clear_edit_box"] = True
                     st.rerun()
             with nav2:
-                if st.button("Next ➡️"):
+                if st.button("Next ➡️", width="stretch"):
                     st.session_state["hr_index"] = min(len(hr) - 1, idx + 1)
+                    st.session_state["_clear_edit_box"] = True
                     st.rerun()
 
-            # Decision buttons
             colA, colB = st.columns([1, 1])
             with colA:
-                if st.button("✅ Accept Proposed", use_container_width=True):
+                if st.button("✅ Accept Proposed", width="stretch", disabled=(not proposed)):
                     st.session_state["hr_decisions"][k] = {
                         "decision": "ACCEPT",
                         "final_match": proposed,
@@ -341,14 +334,13 @@ else:
                         "file": file_name,
                         "original_name": original,
                     }
-                    # move forward if possible
                     if st.session_state["hr_index"] < len(hr) - 1:
                         st.session_state["hr_index"] += 1
-                    st.session_state["edit_box"] = ""
+                    st.session_state["_clear_edit_box"] = True
                     st.rerun()
 
             with colB:
-                if st.button("❌ Reject (No mapping)", use_container_width=True):
+                if st.button("❌ Reject (No mapping)", width="stretch"):
                     st.session_state["hr_decisions"][k] = {
                         "decision": "REJECT",
                         "final_match": "",
@@ -359,17 +351,24 @@ else:
                     }
                     if st.session_state["hr_index"] < len(hr) - 1:
                         st.session_state["hr_index"] += 1
-                    st.session_state["edit_box"] = ""
+                    st.session_state["_clear_edit_box"] = True
                     st.rerun()
 
             st.markdown("**✍️ Edit (enter ontology id and accept)**")
+
+            # Clear edit box safely BEFORE widget creation
+            if st.session_state.get("_clear_edit_box", False):
+                st.session_state["edit_box"] = ""
+                st.session_state["_clear_edit_box"] = False
+
             edit_val = st.text_input(
                 "Corrected match (ontology id)",
                 value=str(existing.get("final_match", "")) if existing.get("decision") == "ACCEPT" else "",
                 key="edit_box",
                 placeholder="e.g., rated_current",
             )
-            if st.button("Apply Edit (Accept)", use_container_width=True):
+
+            if st.button("Apply Edit (Accept)", width="stretch"):
                 edit_val = (edit_val or "").strip()
                 if not edit_val:
                     st.warning("Type a non-empty ontology id to accept.")
@@ -384,11 +383,12 @@ else:
                     }
                     if st.session_state["hr_index"] < len(hr) - 1:
                         st.session_state["hr_index"] += 1
-                    st.session_state["edit_box"] = ""
+                    st.session_state["_clear_edit_box"] = True
                     st.rerun()
 
         decided_count = len(st.session_state["hr_decisions"])
         st.info(f"Decisions recorded: {decided_count} / {len(hr)}")
+
 
 # -----------------------------
 # Step 5: Finalize + Rename
@@ -398,7 +398,7 @@ st.header("5️⃣ Finalize + Run Variable Renaming Agent")
 if not (st.session_state.get("run_started") and isinstance(df_clean, pd.DataFrame)):
     st.info("Run Step 3 first.")
 else:
-    finalize = st.button(" Finalize + Run Renamer")
+    finalize = st.button("Finalize + Run Renamer", width="stretch")
     if finalize:
         run_dir: Path = st.session_state["run_dir"]
         out_dir: Path = st.session_state["out_dir"]
@@ -407,10 +407,8 @@ else:
         final_mappings_csv: Path = st.session_state["final_mappings_csv"]
         human_decisions_csv: Path = st.session_state["human_decisions_csv"]
 
-        # Build final mappings
         final_df = build_final_mappings(df_clean, st.session_state.get("hr_decisions", {}))
 
-        # Save human decisions (for audit)
         hr_rows = []
         for _, d in st.session_state.get("hr_decisions", {}).items():
             hr_rows.append({
@@ -423,13 +421,11 @@ else:
             })
         pd.DataFrame(hr_rows).to_csv(human_decisions_csv, index=False, encoding="utf-8")
 
-        # Save final mappings
         final_df.to_csv(final_mappings_csv, index=False, encoding="utf-8")
 
         st.success(f"✅ Saved final mappings: {final_mappings_csv.name}")
         st.success(f"✅ Saved human decisions: {human_decisions_csv.name}")
 
-        # Run renamer
         with st.spinner("Running variable renamer..."):
             rc, out = run_cmd([
                 sys.executable, str(RENAMER),
@@ -442,38 +438,43 @@ else:
             append_log(out)
 
         if rc != 0:
-            st.error("❌ Variable Renameing failed. Check logs below.")
+            st.error("❌ Variable Renaming failed. Check logs below.")
         else:
             st.success("✅ Renamer completed.")
             summarize(df_clean, st.session_state.get("hr_decisions", {}))
+                        # ---- Cache download payloads so downloads survive reruns ----
+            payloads = {}
 
-            # Show output TTLs
+            # corrected TTLs
             corrected = sorted(Path(out_dir).glob("*_corrected.ttl"))
-            if corrected:
-                st.markdown("### 📦 Corrected TTL output(s)")
-                for p in corrected:
-                    st.write(f"- {p.name}")
-                    st.download_button(
-                        label=f"Download {p.name}",
-                        data=p.read_text(encoding="utf-8", errors="ignore"),
-                        file_name=p.name,
-                        mime="text/turtle",
-                    )
+            for p in corrected:
+                payloads[p.name] = p.read_bytes()
 
-            # Download mappings
-            st.markdown("### 🧾 Downloads")
-            st.download_button(
-                "Download final_mappings.csv",
-                data=final_mappings_csv.read_bytes(),
-                file_name=final_mappings_csv.name,
-                mime="text/csv",
-            )
-            st.download_button(
-                "Download cleaned results (eval_results_ecms_clean.csv)",
-                data=Path(st.session_state["clean_csv"]).read_bytes(),
-                file_name=Path(st.session_state["clean_csv"]).name,
-                mime="text/csv",
-            )
+            # mappings + cleaned results
+            payloads[final_mappings_csv.name] = final_mappings_csv.read_bytes()
+            payloads[Path(st.session_state["clean_csv"]).name] = Path(st.session_state["clean_csv"]).read_bytes()
+
+            st.session_state["download_payloads"] = payloads
+            st.session_state["downloads_ready"] = True
+            # -----------------------------
+# Downloads (stable across reruns)
+# -----------------------------
+            st.header("📥 Downloads")
+
+            if st.session_state.get("downloads_ready") and st.session_state.get("download_payloads"):
+                for fname, fbytes in st.session_state["download_payloads"].items():
+                    mime = "text/turtle" if fname.endswith(".ttl") else "text/csv"
+                    st.download_button(
+                        label=f"Download {fname}",
+                        data=fbytes,
+                        file_name=fname,
+                        mime=mime,
+                        key=f"dl_{st.session_state.get('run_id','')}_{fname}",
+                    )
+            else:
+                st.info("Run Step 5 to generate outputs, then download them here.")
+           
+
 
 # -----------------------------
 # Logs

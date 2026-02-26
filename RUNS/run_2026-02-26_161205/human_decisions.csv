@@ -1,0 +1,6 @@
+source_file,original_name,best_match,decision,final_match,confidence
+lassi.ttl,voltage_U_N,,REJECT,,0.4436622560024261
+lassi.ttl,frequency_f_N,naturalFrequency_Hz,ACCEPT,frequency,0.45
+lassi.ttl,speed_n_N,,ACCEPT,frequency,0.4194025695323944
+lassi.ttl,efficiency_eta,,ACCEPT,,0.4382840394973755
+lassi.ttl,stator_voltage_vector_u_s,,ACCEPT,,0.4353008866310119

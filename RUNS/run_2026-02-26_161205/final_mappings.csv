@@ -1,0 +1,11 @@
+source_file,original_name,final_match,origin
+lassi.ttl,frequency_f_N,frequency,HUMAN_EDIT
+lassi.ttl,input_power_P1,input_power,AUTO_ACCEPT
+lassi.ttl,phase_resistance_R_ph,resistance,AUTO_ACCEPT
+lassi.ttl,power_P_N,power_factor,AUTO_ACCEPT
+lassi.ttl,shaft_power_P2,output_power,AUTO_ACCEPT
+lassi.ttl,slip_s,slip_ratio,AUTO_ACCEPT
+lassi.ttl,speed_n_N,frequency,HUMAN_ACCEPT
+lassi.ttl,stator_copper_losses_P_s,copper_losses,AUTO_ACCEPT
+lassi.ttl,stator_current_vector_i_s,locked_rotor_current,AUTO_ACCEPT
+lassi.ttl,torque_T_N,torque,AUTO_ACCEPT

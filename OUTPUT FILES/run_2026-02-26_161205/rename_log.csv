@@ -1,0 +1,11 @@
+run_id,input_file,output_file,original_name,final_match,replacements
+run_2026-02-26_161205,lassi.ttl,lassi_corrected.ttl,frequency_f_N,frequency,2
+run_2026-02-26_161205,lassi.ttl,lassi_corrected.ttl,input_power_P1,input_power,2
+run_2026-02-26_161205,lassi.ttl,lassi_corrected.ttl,phase_resistance_R_ph,resistance,2
+run_2026-02-26_161205,lassi.ttl,lassi_corrected.ttl,power_P_N,power_factor,2
+run_2026-02-26_161205,lassi.ttl,lassi_corrected.ttl,shaft_power_P2,output_power,2
+run_2026-02-26_161205,lassi.ttl,lassi_corrected.ttl,slip_s,slip_ratio,2
+run_2026-02-26_161205,lassi.ttl,lassi_corrected.ttl,speed_n_N,frequency,2
+run_2026-02-26_161205,lassi.ttl,lassi_corrected.ttl,stator_copper_losses_P_s,copper_losses,2
+run_2026-02-26_161205,lassi.ttl,lassi_corrected.ttl,stator_current_vector_i_s,locked_rotor_current,2
+run_2026-02-26_161205,lassi.ttl,lassi_corrected.ttl,torque_T_N,torque,2

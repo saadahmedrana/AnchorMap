@@ -12,7 +12,7 @@ from rdflib import Graph, Namespace, RDF
 # ---------------- PATHS ----------------
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-load_dotenv(os.path.join(HERE, "..", ".env"))
+load_dotenv(os.path.join(HERE, ".env"))
 load_dotenv()
 
 AALTO_KEY = os.getenv("AALTO_KEY")
@@ -39,9 +39,9 @@ LLM_URL   = "https://aalto-openai-apigw.azure-api.net/v1/openai/deployments/gpt-
 HEADERS   = {"Content-Type": "application/json", "Ocp-Apim-Subscription-Key": AALTO_KEY}
 
 # --- ontology embeddings ---
-ONTO_VECS = os.path.join(HERE, "VariblesDefinedmotor_vectors.npy")
-ONTO_IDS  = os.path.join(HERE, "VariblesDefinedmotor_ids.json")
-ONTO_TXTS = os.path.join(HERE, "VariblesDefinedmotor_texts.json")
+ONTO_VECS = os.path.join(HERE, "JSONSCHEMAFORSHIP_vectors.npy")
+ONTO_IDS  = os.path.join(HERE, "JSONSCHEMAFORSHIP_ids.json")
+ONTO_TXTS = os.path.join(HERE, "JSONSCHEMAFORSHIP_texts.json")
 
 # --- skip list (REQUIRED) ---
 SKIP_CSV  = os.path.join(HERE, "skip_variables.csv")
@@ -224,7 +224,7 @@ def extract_fmu_variable_names(ttl_path):
 
 from pathlib import Path
 
-def run_multifile():
+def run_thisfile():
     # load ontology
     onto_vecs = np.load(ONTO_VECS)
     onto_ids  = json.load(open(ONTO_IDS, "r", encoding="utf-8"))
@@ -235,10 +235,9 @@ def run_multifile():
     skip_set = load_skip_set_required()
 
 
-    ttl_files = sorted(Path(HERE).glob("*.ttl"))
-    if not ttl_files:
-        raise RuntimeError("❌ No .ttl files found in this folder")
-
+    ttl_files = [Path(INPUT_TTL)]
+    if not ttl_files or not ttl_files[0].exists():
+        raise RuntimeError(f"❌ No .ttl file found: {ttl_files[0]}")
     print("\n" + "="*90)
     print(f"▶ MULTI-FILE RUN: {len(ttl_files)} files (*.ttl)")
     print("="*90)
@@ -366,14 +365,26 @@ def run_multifile():
     print(f"🧾 Saved audit   → {AUDIT_CSV}")
     print(f"📞 Total API calls (embed + llm): {_api_calls}")
 
-
-    counts = {}
-    for r in all_results:
-        counts[r["status"]] = counts.get(r["status"], 0) + 1
-    print("\nRouting counts (including skipped):")
-    for k in sorted(counts.keys()):
-        print(f"  {k}: {counts[k]}")
-
+    # Default input (can be overridden via CLI)
+# Default input (can be overridden via CLI)
+INPUT_TTL = os.path.join(HERE, "Input Files", "abb_gen.ttl")
 
 if __name__ == "__main__":
-    run_multifile()
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--input_ttl",
+        default=INPUT_TTL,
+        help="Path to the .ttl file to process (default: Input Files/abb_gen.ttl)"
+    )
+    ap.add_argument("--out_csv", default=OUT_CSV, help="Results CSV output path")
+    ap.add_argument("--audit_csv", default=AUDIT_CSV, help="Audit CSV output path")
+    args = ap.parse_args()
+
+    # override globals
+    INPUT_TTL = args.input_ttl
+    OUT_CSV = args.out_csv
+    AUDIT_CSV = args.audit_csv
+
+    run_thisfile()

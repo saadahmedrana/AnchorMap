@@ -1,0 +1,5 @@
+run_id,input_file,output_file,original_name,final_match,replacements
+run_2026-02-26_151233,abb_gen.ttl,abb_gen_corrected.ttl,Efficiency_full_load,efficiency_class_ie,2
+run_2026-02-26_151233,abb_gen.ttl,abb_gen_corrected.ttl,Output_kW,rated_output_power,2
+run_2026-02-26_151233,abb_gen.ttl,abb_gen_corrected.ttl,Speed_r_min,minimum_air_speed,2
+run_2026-02-26_151233,abb_gen.ttl,abb_gen_corrected.ttl,rated_torque_Nm,ratedTorque_kNm,2

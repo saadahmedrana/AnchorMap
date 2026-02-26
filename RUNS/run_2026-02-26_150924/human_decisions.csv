@@ -1,0 +1,6 @@
+source_file,original_name,best_match,decision,final_match
+filip.ttl,synchronous_speed_omega_e,,REJECT,
+filip.ttl,stator_inductance_Ls,,ACCEPT,stator_inductance
+filip.ttl,rotor_inductance_Lr,inductance,ACCEPT,inductance
+filip.ttl,magnetizing_inductance_Lm,,REJECT,
+filip.ttl,rated_speed_nn,nn_rpm,ACCEPT,nn_rpm

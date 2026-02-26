@@ -35,7 +35,19 @@ def run_cmd(cmd, cwd=ROOT):
     )
     output = (p.stdout or "") + ("\n" + p.stderr if p.stderr else "")
     return p.returncode, output
-
+def reset_app_state():
+    """Clear run-specific session state so user can start a new run cleanly."""
+    keys_to_clear = [
+        "run_started", "run_id", "run_dir", "out_dir", "selected_ttl",
+        "results_csv", "audit_csv", "clean_csv", "final_mappings_csv", "human_decisions_csv",
+        "df_clean", "logs",
+        "hr_index", "hr_decisions", "_clear_edit_box", "edit_box",
+        "downloads_ready", "download_payloads",
+    ]
+    for k in keys_to_clear:
+        if k in st.session_state:
+            del st.session_state[k]
+    st.rerun()
 
 def ensure_session_defaults():
     st.session_state.setdefault("run_started", False)
@@ -492,6 +504,10 @@ if st.session_state.get("downloads_ready") and st.session_state.get("download_pa
         )
 else:
     st.info("Run Step 5 to generate outputs, then download them here.")
+
+st.markdown("---")
+if st.button("🔄 Reset (Start New Run)", width="stretch"):
+    reset_app_state()
 
 # -----------------------------
 # Logs

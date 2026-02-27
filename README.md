@@ -15,6 +15,11 @@ https://github.com/saadahmedrana/AnchorMap
 
 ---
 
+## 🎬 Demo Video
+
+<video src="DEMOVIDEOANCHORMAP_NEWUI.mp4" controls width="900"></video>
+
+
 # 🚀 Quick Start
 
 Follow these steps to get AnchorMap running locally.

@@ -17,9 +17,13 @@ https://github.com/saadahmedrana/AnchorMap
 
 
 
+
+
 ## 🎬 Demo Video
 
-[![AnchorMap Demo](demo.gif)](DEMOVIDEOANCHORMAP_NEWUI.mp4)
+[![AnchorMap Demo](demo.gif)](https://github.com/user-attachments/assets/abd39406-ec94-489b-a83b-7ac3fff74eaa)
+
+Direct link: https://github.com/user-attachments/assets/abd39406-ec94-489b-a83b-7ac3fff74eaa
 
 
 # 🚀 Quick Start

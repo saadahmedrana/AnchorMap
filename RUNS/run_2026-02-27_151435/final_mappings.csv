@@ -1,0 +1,5 @@
+source_file,original_name,final_match,origin
+abb_gen.ttl,Efficiency_full_load,efficiency_class_ie,AUTO_ACCEPT
+abb_gen.ttl,Output_kW,rated_output_power,AUTO_ACCEPT
+abb_gen.ttl,Speed_r_min,minimum_air_speed,AUTO_ACCEPT
+abb_gen.ttl,rated_torque_Nm,ratedTorque_kNm,AUTO_ACCEPT

@@ -1,0 +1,6 @@
+source_file,original_name,best_match,decision,final_match,confidence
+hinkkanen.ttl,rated_frequency_fn,,REJECT,,0.4420402646064758
+hinkkanen.ttl,magnetizing_inductance_LM,,REJECT,,0.438400387763977
+hinkkanen.ttl,stator_transient_inductance_L_s_prime,inductance,ACCEPT,inductance,0.45
+hinkkanen.ttl,stator_current_space_vector_is,locked_rotor_current,ACCEPT,locked_rotor_current,0.45
+hinkkanen.ttl,stator_voltage_space_vector_us,,ACCEPT,voltage,0.4345168471336365
